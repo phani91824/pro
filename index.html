@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Legal Document Analysis Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --navy-blue: #1e3a8a;
+            --navy-blue-dark: #1e40af;
+            --gray-sand: #f5f5dc;
+            --light-gray: #f8fafc;
+            --border-gray: #e2e8f0;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--navy-blue) 0%, var(--navy-blue-dark) 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .navbar-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .chatbot-toggle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--navy-blue);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .chatbot-window {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            display: none;
+            flex-direction: column;
+        }
+        
+        .chatbot-header {
+            background: var(--navy-blue);
+            color: white;
+            padding: 15px;
+            border-radius: 12px 12px 0 0;
+            font-weight: bold;
+        }
+        
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .chatbot-input-area {
+            padding: 15px;
+            border-top: 1px solid var(--border-gray);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message {
+            margin-bottom: 12px;
+            max-width: 80%;
+        }
+        
+        .message.user {
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.bot {
+            margin-right: auto;
+        }
+        
+        .message-bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .message.user .message-bubble {
+            background: var(--navy-blue);
+            color: white;
+        }
+        
+        .message.bot .message-bubble {
+            background: var(--light-gray);
+            color: #374151;
+        }
+        
+        .message.bot.warning .message-bubble {
+            background: #fee2e2;
+            color: #dc2626;
+            border-left: 3px solid #dc2626;
+        }
+        
+        .risk-high {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .risk-medium {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .risk-low {
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+        
+        .clause-grade-a { color: #10b981; font-weight: bold; }
+        .clause-grade-b { color: #f59e0b; font-weight: bold; }
+        .clause-grade-c { color: #ef4444; font-weight: bold; }
+        
+        .timeline-item {
+            border-left: 2px solid var(--navy-blue);
+            padding-left: 20px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--navy-blue);
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--border-gray);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--navy-blue);
+            background-color: #f8fafc;
+        }
+        
+        .upload-area.dragover {
+            border-color: var(--navy-blue);
+            background-color: #e0f2fe;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--light-gray);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--navy-blue);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            color: var(--navy-blue);
+            border-bottom-color: var(--navy-blue);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .suggestion-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 500px;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white navbar-shadow sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-gavel text-blue-900 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-900">LegalAI Analyzer</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="suggestionBtn" class="text-gray-600 hover:text-blue-900">
+                        <i class="fas fa-lightbulb"></i>
+                    </button>
+                    <button class="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800">
+                        <i class="fas fa-download mr-2"></i>Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Dashboard Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Document Analysis Dashboard</h2>
+            <p class="text-gray-600">Upload and analyze legal documents with AI-powered insights</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-white rounded-xl card-shadow p-6 mb-8">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">
+                <i class="fas fa-upload text-blue-900 mr-2"></i>Upload Documents
+            </h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <div id="uploadArea" class="upload-area">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-lg font-medium text-gray-700 mb-2">Drag & drop files here</p>
+                        <p class="text-gray-500 mb-4">or click to browse</p>
+                        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" multiple class="hidden">
+                        <button id="browseBtn" class="bg-blue-900 text-white px-6 py-2 rounded-lg hover:bg-blue-800">
+                            Browse Files
+                        </button>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Number of Documents to Compare:</label>
+                        <select id="docCount" class="w-full p-3 border border-gray-300 rounded-lg">
+                            <option value="1">Single Document Analysis</option>
+                            <option value="2">Compare 2 Documents</option>
+                            <option value="3">Compare 3 Documents</option>
+                            <option value="4">Compare 4 Documents</option>
+                            <option value="5">Compare 5+ Documents</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-gray-900 mb-3">Uploaded Documents</h4>
+                    <div id="fileList" class="space-y-2 max-h-60 overflow-y-auto">
+                        <!-- Uploaded files will appear here -->
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button id="analyzeBtn" class="w-full bg-blue-900 text-white py-3 rounded-lg hover:bg-blue-800 disabled:bg-gray-400">
+                            <i class="fas fa-cogs mr-2"></i>Start Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results -->
+        <div id="analysisSection" class="hidden">
+            <!-- Tabs -->
+            <div class="bg-white rounded-xl card-shadow mb-8">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6" id="tabNav">
+                        <button class="tab-button active" data-tab="overview">
+                            <i class="fas fa-chart-pie mr-2"></i>Overview
+                        </button>
+                        <button class="tab-button" data-tab="clauses">
+                            <i class="fas fa-list-alt mr-2"></i>Clause Analysis
+                        </button>
+                        <button class="tab-button" data-tab="risks">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>Risk Assessment
+                        </button>
+                        <button class="tab-button" data-tab="timeline">
+                            <i class="fas fa-calendar-alt mr-2"></i>Timeline
+                        </button>
+                        <button class="tab-button" data-tab="comparison">
+                            <i class="fas fa-balance-scale mr-2"></i>Comparison
+                        </button>
+                        <button class="tab-button" data-tab="insights">
+                            <i class="fas fa-brain mr-2"></i>AI Insights
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Overview Tab -->
+                <div id="overview" class="tab-content active p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-6">Document Analysis Overview</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-blue-100">Total Clauses</p>
+                                    <p class="text-2xl font-bold">47</p>
+                                </div>
+                                <i class="fas fa-file-alt text-3xl text-blue-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-green-100">Low Risk</p>
+                                    <p class="text-2xl font-bold">28</p>
+                                </div>
+                                <i class="fas fa-check-circle text-3xl text-green-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-yellow-100">Medium Risk</p>
+                                    <p class="text-2xl font-bold">15</p>
+                                </div>
+                                <i class="fas fa-exclamation-circle text-3xl text-yellow-200"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-red-100">High Risk</p>
+                                    <p class="text-2xl font-bold">4</p>
+                                </div>
+                                <i class="fas fa-exclamation-triangle text-3xl text-red-200"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Risk Distribution</h4>
+                            <canvas id="riskChart" style="height: 300px;"></canvas>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Clause Categories</h4>
+                            <canvas id="clauseChart" style="height: 300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Document Summary</h4>
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <p class="text-gray-700 leading-relaxed">
+                                This legal document contains 47 clauses spanning various categories including payment terms, liability, termination, and intellectual property rights. The overall risk assessment indicates 4 high-risk clauses requiring immediate attention, 15 medium-risk clauses needing review, and 28 low-risk standard clauses. Key concerns include unlimited liability exposure in Section 12.3 and ambiguous termination conditions in Section 8.1.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clause Analysis Tab -->
+                <div id="clauses" class="tab-content p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold text-gray-900">Clause Analysis</h3>
+                        <div class="flex space-x-2">
+                            <input type="text" id="clauseSearch" placeholder="Search clauses..." class="px-3 py-2 border border-gray-300 rounded-lg">
+                            <select id="clauseFilter" class="px-3 py-2 border border-gray-300 rounded-lg">
+                                <option value="all">All Clauses</option>
+                                <option value="high-risk">High Risk</option>
+                                <option value="medium-risk">Medium Risk</option>
+                                <option value="low-risk">Low Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="clauseList" class="space-y-4">
+                        <!-- Sample Clauses -->
+                        <div class="bg-white border rounded-lg p-4 risk-high">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-semibold text-gray-900">Section 12.3 - Unlimited Liability</h4>
+                                <div class="flex items-center space-x-2">
+                                    <span class="clause-grade-c">Grade: C</span>
+                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">High Risk</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 mb-3">
+                                "The Company shall be liable for any and all damages, losses, or expenses incurred by the Client, without limitation as to amount or scope."
+                            </p>
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                                <h5 class="font-medium text-red-900 mb-2">Risk Analysis:</h5>
+                                <p class="text-red-800 text-sm">This clause exposes the company to unlimited liability, which could result in catastrophic financial exposure. Recommend implementing liability caps.</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <h5 class="font-medium text-blue-900 mb-2">Suggested Revision:</h5>
+                                <p class="text-blue-800 text-sm">"The Company's total liability shall not exceed the total amount paid by the Client under this Agreement in the twelve months preceding the claim."</p>
+                            </div>
+                            <div class="flex items-center justify-between mt-3 text-sm text-gray-500">
+                                <span><i class="fas fa-tag mr-1"></i>Category: Liability</span>
+                                <span><i class="fas fa-balance-scale mr-1"></i>Tone: Risky</span>
+                                <button class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-edit mr-1"></i>Edit Clause
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border rounded-lg p-4 risk-medium">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-semibold text-gray-900">Section 8.1 - Termination Conditions</h4>
+                                <div class="flex items-center space-x-2">
+                                    <span class="clause-grade-b">Grade: B</span>
+                                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Medium Risk</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 mb-3">
+                                "Either party may terminate this Agreement upon reasonable notice to the other party."
+                            </p>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                                <h5 class="font-medium text-yellow-900 mb-2">Risk Analysis:</h5>
+                                <p class="text-yellow-800 text-sm">The term "reasonable notice" is ambiguous and could lead to disputes. Specific timeframes should be defined.</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <h5 class="font-medium text-blue-900 mb-2">Suggested Revision:</h5>
+                                <p class="text-blue-800 text-sm">"Either party may terminate this Agreement upon thirty (30) days written notice to the other party."</p>
+                            </div>
+                            <div class="flex items-center justify-between mt-3 text-sm text-gray-500">
+                                <span><i class="fas fa-tag mr-1"></i>Category: Termination</span>
+                                <span><i class="fas fa-balance-scale mr-1"></i>Tone: Formal</span>
+                                <button class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-edit mr-1"></i>Edit Clause
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border rounded-lg p-4 risk-low">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-semibold text-gray-900">Section 3.2 - Payment Terms</h4>
+                                <div class="flex items-center space-x-2">
+                                    <span class="clause-grade-a">Grade: A</span>
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Low Risk</span>
+                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">Boilerplate</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 mb-3">
+                                "Payment shall be made within thirty (30) days of receipt of invoice. Late payments shall incur interest at 1.5% per month."
+                            </p>
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                                <h5 class="font-medium text-green-900 mb-2">Analysis:</h5>
+                                <p class="text-green-800 text-sm">Standard payment terms with clear timeframes and late payment penalties. Well-defined and legally sound.</p>
+                            </div>
+                            <div class="flex items-center justify-between mt-3 text-sm text-gray-500">
+                                <span><i class="fas fa-tag mr-1"></i>Category: Payment</span>
+                                <span><i class="fas fa-balance-scale mr-1"></i>Tone: Professional</span>
+                                <button class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-edit mr-1"></i>Edit Clause
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Assessment Tab -->
+                <div id="risks" class="tab-content p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-6">Risk Assessment & Obligations</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                            <h4 class="font-semibold text-red-900 mb-4">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>High Risk Items
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Unlimited Liability Exposure</p>
+                                    <p class="text-sm text-gray-600">Section 12.3 - Could result in catastrophic losses</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Broad Indemnification</p>
+                                    <p class="text-sm text-gray-600">Section 14.2 - Overly broad indemnity scope</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">IP Assignment</p>
+                                    <p class="text-sm text-gray-600">Section 7.1 - All-encompassing IP transfer</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                            <h4 class="font-semibold text-yellow-900 mb-4">
+                                <i class="fas fa-exclamation-circle mr-2"></i>Medium Risk Items
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Ambiguous Termination</p>
+                                    <p class="text-sm text-gray-600">Section 8.1 - Undefined "reasonable notice"</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Jurisdiction Clause</p>
+                                    <p class="text-sm text-gray-600">Section 16.3 - May favor one party</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Performance Standards</p>
+                                    <p class="text-sm text-gray-600">Section 4.2 - Vague success criteria</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h4 class="font-semibold text-blue-900 mb-4">
+                                <i class="fas fa-clipboard-list mr-2"></i>Key Obligations
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Monthly Reporting</p>
+                                    <p class="text-sm text-gray-600">Due 15th of each month</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Compliance Audit</p>
+                                    <p class="text-sm text-gray-600">Quarterly review required</p>
+                                </div>
+                                <div class="bg-white rounded p-3">
+                                    <p class="font-medium text-gray-900">Data Protection</p>
+                                    <p class="text-sm text-gray-600">GDPR compliance mandatory</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg card-shadow p-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Risk Mitigation Recommendations</h4>
+                        <div class="space-y-4">
+                            <div class="border-l-4 border-red-500 pl-4">
+                                <h5 class="font-medium text-gray-900">Immediate Action Required</h5>
+                                <p class="text-gray-700 mt-1">Add liability caps to Section 12.3 to limit maximum exposure to 12 months of contract value.</p>
+                            </div>
+                            <div class="border-l-4 border-yellow-500 pl-4">
+                                <h5 class="font-medium text-gray-900">Clarification Needed</h5>
+                                <p class="text-gray-700 mt-1">Define specific notice periods in termination clauses and establish clear performance metrics.</p>
+                            </div>
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <h5 class="font-medium text-gray-900">Best Practice</h5>
+                                <p class="text-gray-700 mt-1">Consider adding force majeure clause and dispute resolution procedures for comprehensive protection.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Tab -->
+                <div id="timeline" class="tab-content p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-6">Timeline & Important Dates</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Contract Timeline</h4>
+                            <div class="space-y-4">
+                                <div class="timeline-item">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h5 class="font-medium text-gray-900">Contract Effective Date</h5>
+                                            <p class="text-gray-600">January 15, 2024</p>
+                                        </div>
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Past</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h5 class="font-medium text-gray-900">First Deliverable Due</h5>
+                                            <p class="text-gray-600">February 28, 2024</p>
+                                        </div>
+                                        <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Upcoming</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h5 class="font-medium text-gray-900">Performance Review</h5>
+                                            <p class="text-gray-600">June 15, 2024</p>
+                                        </div>
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">Future</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h5 class="font-medium text-gray-900">Contract Expiration</h5>
+                                            <p class="text-gray-600">January 14, 2025</p>
+                                        </div>
+                                        <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">Future</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Critical Deadlines</h4>
+                            <div class="space-y-3">
+                                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-red-900">Termination Notice Deadline</h5>
+                                    <p class="text-red-700 text-sm">November 14, 2024 (60 days before expiration)</p>
+                                    <p class="text-red-600 text-xs mt-1">Must provide written notice if not renewing</p>
+                                </div>
+                                
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-yellow-900">Insurance Renewal</h5>
+                                    <p class="text-yellow-700 text-sm">March 31, 2024</p>
+                                    <p class="text-yellow-600 text-xs mt-1">Professional liability coverage must be maintained</p>
+                                </div>
+                                
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-blue-900">Payment Schedule</h5>
+                                    <p class="text-blue-700 text-sm">Monthly on the 1st</p>
+                                    <p class="text-blue-600 text-xs mt-1">Net 30 payment terms apply</p>
+                                </div>
+                            </div>
+                            
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 mt-6">Duration Analysis</h4>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Contract Term</p>
+                                        <p class="text-lg font-semibold text-gray-900">12 months</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Auto-Renewal</p>
+                                        <p class="text-lg font-semibold text-gray-900">Yes (1 year)</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Notice Period</p>
+                                        <p class="text-lg font-semibold text-gray-900">60 days</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Grace Period</p>
+                                        <p class="text-lg font-semibold text-gray-900">15 days</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Tab -->
+                <div id="comparison" class="tab-content p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-6">Document Comparison Analysis</h3>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                        <p class="text-yellow-800">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Upload multiple documents to enable comparison analysis. Current analysis is based on a single document.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Comparison Metrics</h4>
+                            <canvas id="comparisonChart" style="height: 300px;"></canvas>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Key Differences</h4>
+                            <div class="space-y-3">
+                                <div class="bg-white border rounded-lg p-4">
+                                    <h5 class="font-medium text-gray-900">Liability Terms</h5>
+                                    <p class="text-sm text-gray-600 mt-1">Document A: Unlimited liability | Document B: Capped at contract value</p>
+                                </div>
+                                <div class="bg-white border rounded-lg p-4">
+                                    <h5 class="font-medium text-gray-900">Payment Terms</h5>
+                                    <p class="text-sm text-gray-600 mt-1">Document A: Net 30 | Document B: Net 45 with early payment discount</p>
+                                </div>
+                                <div class="bg-white border rounded-lg p-4">
+                                    <h5 class="font-medium text-gray-900">Termination Notice</h5>
+                                    <p class="text-sm text-gray-600 mt-1">Document A: 60 days | Document B: 30 days</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Merged Comparison Report</h4>
+                        <div class="bg-white rounded-lg card-shadow p-6">
+                            <p class="text-gray-700 leading-relaxed mb-4">
+                                When comparing multiple documents, this section will provide a comprehensive analysis highlighting similarities, differences, and recommendations for standardization.
+                            </p>
+                            <button class="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800">
+                                <i class="fas fa-download mr-2"></i>Download Comparison Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insights Tab -->
+                <div id="insights" class="tab-content p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-6">AI-Powered Insights & Recommendations</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Tone Analysis</h4>
+                            <canvas id="toneChart" style="height: 250px;"></canvas>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Document Characteristics</h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">Overall Complexity</span>
+                                    <span class="font-semibold text-blue-900">High</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">Legal Language Density</span>
+                                    <span class="font-semibold text-blue-900">78%</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">Boilerplate Content</span>
+                                    <span class="font-semibold text-blue-900">34%</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">Readability Score</span>
+                                    <span class="font-semibold text-blue-900">42/100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-lg card-shadow p-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>AI Recommendations
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="border-l-4 border-blue-500 pl-4">
+                                    <h5 class="font-medium text-gray-900">Contract Structure</h5>
+                                    <p class="text-gray-700 text-sm mt-1">Consider reorganizing clauses into logical sections (e.g., Performance, Payment, Risk, Termination) for better readability and comprehension.</p>
+                                </div>
+                                <div class="border-l-4 border-green-500 pl-4">
+                                    <h5 class="font-medium text-gray-900">Language Simplification</h5>
+                                    <p class="text-gray-700 text-sm mt-1">Several clauses use unnecessarily complex language. Simplifying without losing legal meaning could improve enforceability.</p>
+                                </div>
+                                <div class="border-l-4 border-purple-500 pl-4">
+                                    <h5 class="font-medium text-gray-900">Risk Balancing</h5>
+                                    <p class="text-gray-700 text-sm mt-1">Current risk allocation heavily favors one party. Consider more balanced terms to improve negotiability and reduce dispute likelihood.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg card-shadow p-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">
+                                <i class="fas fa-cogs text-blue-500 mr-2"></i>Explainable AI Analysis
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-blue-900">Risk Assessment Methodology</h5>
+                                    <p class="text-blue-800 text-sm mt-1">
+                                        Our AI analyzes clause language patterns, comparative market standards, and historical dispute data to assign risk scores. 
+                                        High-risk indicators include unlimited terms, vague definitions, and one-sided obligations.
+                                    </p>
+                                </div>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-green-900">Tone Detection Process</h5>
+                                    <p class="text-green-800 text-sm mt-1">
+                                        Natural language processing algorithms evaluate word choice, sentence structure, and legal phrase usage to determine 
+                                        document tone (assertive, collaborative, defensive, neutral).
+                                    </p>
+                                </div>
+                                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <h5 class="font-medium text-purple-900">Boilerplate Detection</h5>
+                                    <p class="text-purple-800 text-sm mt-1">
+                                        Comparison against a database of standard legal clauses identifies boilerplate content. 
+                                        While standard clauses reduce risk, they may not address specific business needs.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot -->
+    <div class="chatbot-container">
+        <button id="chatbotToggle" class="chatbot-toggle">
+            <i class="fas fa-comments"></i>
+        </button>
+        
+        <div id="chatbotWindow" class="chatbot-window">
+            <div class="chatbot-header">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-robot mr-2"></i>
+                        LegalAI Assistant
+                    </div>
+                    <button id="chatbotClose" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="chatbotMessages" class="chatbot-messages">
+                <div class="message bot">
+                    <div class="message-bubble">
+                        Hello! I'm your LegalAI Assistant. I can help you understand document analysis features, explain legal terms, and guide you through the platform. How can I assist you today?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chatbot-input-area">
+                <input type="text" id="chatbotInput" placeholder="Type your question..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg">
+                <button id="chatbotSend" class="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suggestion Box -->
+    <div id="overlay" class="overlay"></div>
+    <div id="suggestionBox" class="suggestion-box">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">
+            <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>Suggestions & Feedback
+        </h3>
+        <p class="text-gray-600 mb-4">Help us improve LegalAI Analyzer by sharing your suggestions or feedback.</p>
+        
+        <form id="suggestionForm">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <select id="suggestionType" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="feature">Feature Request</option>
+                    <option value="bug">Bug Report</option>
+                    <option value="improvement">Improvement Suggestion</option>
+                    <option value="general">General Feedback</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                <textarea id="suggestionMessage" rows="4" class="w-full p-3 border border-gray-300 rounded-lg" 
+                         placeholder="Please describe your suggestion or feedback in detail..."></textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancelSuggestion" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                    Cancel
+                </button>
+                <button type="submit" class="bg-blue-900 text-white px-6 py-2 rounded-lg hover:bg-blue-800">
+                    Submit Suggestion
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Global variables
+        let uploadedFiles = [];
+        let analysisResults = {};
+        let currentTab = 'overview';
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            initializeCharts();
+            simulateAnalysisData();
+        });
+        
+        // Event Listeners
+        function initializeEventListeners() {
+            // File upload
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            browseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelection);
+            
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            
+            analyzeBtn.addEventListener('click', startAnalysis);
+            
+            // Tab navigation
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    switchTab(e.target.dataset.tab);
+                });
+            });
+            
+            // Chatbot
+            const chatbotToggle = document.getElementById('chatbotToggle');
+            const chatbotWindow = document.getElementById('chatbotWindow');
+            const chatbotClose = document.getElementById('chatbotClose');
+            const chatbotSend = document.getElementById('chatbotSend');
+            const chatbotInput = document.getElementById('chatbotInput');
+            
+            chatbotToggle.addEventListener('click', toggleChatbot);
+            chatbotClose.addEventListener('click', closeChatbot);
+            chatbotSend.addEventListener('click', sendChatMessage);
+            chatbotInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendChatMessage();
+            });
+            
+            // Suggestions
+            const suggestionBtn = document.getElementById('suggestionBtn');
+            const overlay = document.getElementById('overlay');
+            const suggestionBox = document.getElementById('suggestionBox');
+            const cancelSuggestion = document.getElementById('cancelSuggestion');
+            const suggestionForm = document.getElementById('suggestionForm');
+            
+            suggestionBtn.addEventListener('click', showSuggestionBox);
+            overlay.addEventListener('click', hideSuggestionBox);
+            cancelSuggestion.addEventListener('click', hideSuggestionBox);
+            suggestionForm.addEventListener('submit', handleSuggestionSubmit);
+            
+            // Search and filter
+            const clauseSearch = document.getElementById('clauseSearch');
+            const clauseFilter = document.getElementById('clauseFilter');
+            
+            if (clauseSearch) clauseSearch.addEventListener('input', filterClauses);
+            if (clauseFilter) clauseFilter.addEventListener('change', filterClauses);
+        }
+        
+        // File handling
+        function handleFileSelection(e) {
+            const files = Array.from(e.target.files);
+            addFilesToList(files);
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+        
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            addFilesToList(files);
+        }
+        
+        function addFilesToList(files) {
+            const fileList = document.getElementById('fileList');
+            
+            files.forEach(file => {
+                if (uploadedFiles.length < 5) {
+                    uploadedFiles.push(file);
+                    
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                    fileItem.innerHTML = `
+                        <div class="flex items-center">
+                            <i class="fas fa-file-pdf text-red-500 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-gray-900">${file.name}</p>
+                                <p class="text-sm text-gray-500">${formatFileSize(file.size)}</p>
+                            </div>
+                        </div>
+                        <button class="text-red-500 hover:text-red-700" onclick="removeFile('${file.name}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    fileList.appendChild(fileItem);
+                }
+            });
+            
+            updateAnalyzeButton();
+        }
+        
+        function removeFile(fileName) {
+            uploadedFiles = uploadedFiles.filter(file => file.name !== fileName);
+            updateFileList();
+            updateAnalyzeButton();
+        }
+        
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            uploadedFiles.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                fileItem.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas fa-file-pdf text-red-500 mr-3"></i>
+                        <div>
+                            <p class="font-medium text-gray-900">${file.name}</p>
+                            <p class="text-sm text-gray-500">${formatFileSize(file.size)}</p>
+                        </div>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700" onclick="removeFile('${file.name}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        function updateAnalyzeButton() {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = uploadedFiles.length === 0;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Analysis
+        function startAnalysis() {
+            if (uploadedFiles.length === 0) return;
+            
+            // Show loading state
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const originalText = analyzeBtn.innerHTML;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analyzing...';
+            analyzeBtn.disabled = true;
+            
+            // Simulate analysis process
+            setTimeout(() => {
+                // Show analysis results
+                document.getElementById('analysisSection').classList.remove('hidden');
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+                
+                // Scroll to results
+                document.getElementById('analysisSection').scrollIntoView({ behavior: 'smooth' });
+                
+                // Update charts with new data
+                updateCharts();
+            }, 3000);
+        }
+        
+        function simulateAnalysisData() {
+            analysisResults = {
+                clauses: {
+                    total: 47,
+                    highRisk: 4,
+                    mediumRisk: 15,
+                    lowRisk: 28
+                },
+                tone: {
+                    formal: 45,
+                    assertive: 25,
+                    collaborative: 20,
+                    defensive: 10
+                },
+                categories: {
+                    payment: 12,
+                    liability: 8,
+                    termination: 6,
+                    ip: 5,
+                    performance: 10,
+                    other: 6
+                }
+            };
+        }
+        
+        // Tab management
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelector([data-tab="${tabName}"]).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            currentTab = tabName;
+        }
+        
+        // Charts
+        function initializeCharts() {
+            createRiskChart();
+            createClauseChart();
+            createToneChart();
+            createComparisonChart();
+        }
+        
+        function createRiskChart() {
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                    datasets: [{
+                        data: [28, 15, 4],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createClauseChart() {
+            const ctx = document.getElementById('clauseChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Payment', 'Liability', 'Termination', 'IP Rights', 'Performance', 'Other'],
+                    datasets: [{
+                        data: [12, 8, 6, 5, 10, 6],
+                        backgroundColor: '#1e3a8a',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createToneChart() {
+            const ctx = document.getElementById('toneChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Formal', 'Assertive', 'Collaborative', 'Defensive'],
+                    datasets: [{
+                        label: 'Document Tone',
+                        data: [45, 25, 20, 10],
+                        backgroundColor: 'rgba(30, 58, 138, 0.2)',
+                        borderColor: '#1e3a8a',
+                        pointBackgroundColor: '#1e3a8a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 50
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createComparisonChart() {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Risk Score', 'Complexity', 'Clarity', 'Balance', 'Enforceability'],
+                    datasets: [{
+                        label: 'Current Document',
+                        data: [6, 8, 4, 3, 7],
+                        borderColor: '#1e3a8a',
+                        backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateCharts() {
+            // This function would update charts with real analysis data
+            console.log('Updating charts with analysis results');
+        }
+        
+        // Chatbot functionality
+        function toggleChatbot() {
+            const chatbotWindow = document.getElementById('chatbotWindow');
+            chatbotWindow.style.display = chatbotWindow.style.display === 'flex' ? 'none' : 'flex';
+        }
+        
+        function closeChatbot() {
+            document.getElementById('chatbotWindow').style.display = 'none';
+        }
+        
+        function sendChatMessage() {
+            const input = document.getElementById('chatbotInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addChatMessage(message, 'user');
+            input.value = '';
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const response = generateChatResponse(message);
+                addChatMessage(response.text, 'bot', response.isWarning);
+            }, 1000);
+        }
+        
+        function addChatMessage(text, sender, isWarning = false) {
+            const messagesContainer = document.getElementById('c
